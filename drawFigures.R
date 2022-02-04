@@ -20,8 +20,21 @@ load('results/scaling.rda'); for(i in 1:length(scaling)) {assign(names(scaling)[
 rivers <- read.csv("rivers/real_rivers.csv")
 riverNames <- rivers$Name
 
-# Fig. 1dg ####
-pdf(file="Fig1cefh_draft.pdf", width=17/2.54, height=9/2.54)
+riversFull <- read.csv('results/TableS1_draft.csv')
+
+# Fig. 1c ####
+pdf(file="Fig1c_draft.pdf",width=9/2.54, height=5/2.54)
+set.seed(7); OCN <- create_OCN(20,10)
+draw_simple_OCN(OCN, thrADraw=10)
+OCN <- landscape_OCN(OCN)
+OCN <- aggregate_OCN(OCN,10)
+abline(h=0:10); abline(v=0:20)
+points(OCN$RN$X,OCN$RN$Y,cex=2)
+title(sprintf("N = %d - p = %.2f",OCN$RN$nNodes,OCN$AG$nNodes/OCN$RN$nNodes))
+dev.off()
+
+# Fig. 1dfgi ####
+pdf(file="Fig1dfgi_draft.pdf", width=17/2.54, height=9/2.54)
 par(mfrow=c(2,2))
 load("rivers/Adige.rda")
 Adige20 <- extract_river(Adige, 20)
@@ -157,8 +170,8 @@ title(sprintf('thrA = %d cells  -  N = %d  -  p = %.2f',
               OCN_500$RN$nNodes, OCN_500$AG$nNodes/OCN_500$RN$nNodes))
 dev.off()
 
-# Fig. 1cefh ####
-pdf(file="Fig1dg_draft.pdf", width=17/2.54, height=9/2.54)
+# Fig. 1eh ####
+pdf(file="Fig1eh_draft.pdf", width=17/2.54, height=9/2.54)
 par(mfrow=c(1,2))
 
 Adige100 <- extract_river(Adige, 100)
@@ -220,8 +233,65 @@ for (k in 1:length(X_contour)){
 
 dev.off()
 
-# Fig. 2a ####
-pdf(file="Fig2a_draft.pdf",width=17/2.54, height=10/2.54)
+# Fig. 2 ####
+pdf('Fig2_draft.pdf',width=17/2.54,height=10/2.54)
+par(mfrow=c(1,2))
+thrA <- exp(log(10)*seq(0, 4, length.out=100))
+A <- exp(log(10)*seq(4, 7, length.out=100))
+thr_a <- thrA %*% (t(A)^(-1))
+
+N <- 0.435*thrA^(-0.446) %*% t(A)
+p <- 1.531*thrA^(-0.523) %*% t(A^(-0.032))
+p[p>1] <- 1
+
+image.plot(log10(thrA),log10(A),log10(N),
+           xlab='AT',ylab='A',yaxt="n",col=tim.colors(1000),
+           breaks=seq(1,7,length.out=1001))
+axis(side=2,at=4:7)
+contour(log10(thrA),log10(A),log10(thr_a),add=T, levels=-(6:1))
+title('N')
+points(log10(c(20,100,500)),log10(rep(4e4,3)),pch=19)
+
+
+image.plot(log10(thrA),log10(A),p,
+           xlab='AT',ylab='A',yaxt="n",col=tim.colors(1000),
+           breaks=seq(0,1,length.out=1001))
+axis(side=2,at=4:7)
+contour(log10(thrA),log10(A),log10(thr_a),add=T, levels=-(6:1))
+title('p')
+points(log10(c(20,100,500)),log10(rep(4e4,3)),pch=19)
+dev.off()
+
+# Fig. 3 ####
+pdf(file="Fig3_draft.pdf",width=17/2.54, height=6/2.54)
+p20 <- data20$nLinks$Rivers/data20$nNodes$Rivers
+p100 <- data100$nLinks$Rivers/data100$nNodes$Rivers
+p500 <- data500$nLinks$Rivers/data500$nNodes$Rivers
+aa <- cbind(p20, p100, p500)
+p20_n <- (p20-mean(p20))/sd(p20)
+p100_n <- (p100-mean(p100))/sd(p100)
+p500_n <- (p500-mean(p500))/sd(p500)
+aa_n <- cbind(p20_n, p100_n, p500_n)
+specialRivers <- c(6,7,13,14,22,40,44,45,46,48,49)
+cols <- rainbow(11)
+par(mfrow=c(1,2),mai=c(0,0,0,0))
+plot(c(20,100,500),aa[1,],type="o",col="gray",log="xy",pch=19,xlim=c(100/6,500),ylim=c(0.01,0.5),
+     bty="n",xaxt="n",yaxt="n",xlab="A_T [no. pixels]",ylab="p_r")
+axis(1,pos=0.01,at=c(20,100,500)); axis(2,pos=100/6)
+for(i in 2:50){if (!(i %in% specialRivers)){lines(c(20,100,500),aa[i,],type="o",pch=19,col="gray")}}
+for (i in 1:length(specialRivers)){lines(c(20,100,500),aa[specialRivers[i],],lwd=1,type="o",pch=19,col=cols[i])}
+legend(200,0.5,legend=riverNames[specialRivers],col=cols,lty=1+numeric(11))
+
+plot(c(20,100,500),aa_n[1,],type="o",col="gray",log="x",pch=19,ylim=c(-3,4.5),xlim=c(100/6,500),
+     bty="n",xaxt="n",yaxt="n",xlab="A_T [no. pixels]",ylab="Normalized p_r")
+axis(1,pos=-3,at=c(20,100,500)); axis(2,pos=100/6,at=seq(-3,4.5,1.5))
+for(i in 2:50){if (!(i %in% specialRivers)){lines(c(20,100,500),aa_n[i,],type="o",pch=19,col="gray")}}
+for (i in 1:length(specialRivers)){lines(c(20,100,500),aa_n[specialRivers[i],],lwd=1,type="o",pch=19,col=cols[i])}
+#legend(20,4.5,legend=riverNames[specialRivers],col=cols,lty=1+numeric(11))
+dev.off()
+
+# Fig. 4a ####
+pdf(file="Fig4a_draft.pdf",width=17/2.54, height=10/2.54)
 plot(ne_countries(scale="medium",continent="Europe"),xlim=c(3,18),ylim=c(43,48.6),col="#EEEEEE")
 
 riverContinent <- rivers$continent
@@ -247,8 +317,8 @@ lines(c(0,20),c(47,47),col="gray")
 lines(c(0,20),c(49,49),col="gray")
 dev.off()
 
-# Fig. 2b ####
-pdf(file="Fig2b_draft.pdf",width=17/2.54, height=10/2.54)
+# Fig. 4b ####
+pdf(file="Fig4b_draft.pdf",width=17/2.54, height=10/2.54)
 plot(ne_countries(scale="medium",continent="North America"),xlim=c(-130,-70),ylim=c(30,70),col="#EEEEEE")
 for (i in which(riverContinent=="NorthAmerica")){
   load(paste0('rivers/',riverNames[i],'.rda'))
@@ -272,20 +342,8 @@ lines(c(-150,-70),c(70,70),col="gray")
 dev.off()
 
 
-# Fig. 3 ####
-pdf(file="Fig3_draft.pdf",width=17/2.54, height=12/2.54)
-par(mfrow=c(2,3))
-boxplot(data20$CVm_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.37,0.8)); title("CVm")
-boxplot(data100$CVm_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.37,0.8)); title("CVm")
-boxplot(data500$CVm_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.37,0.8)); title("CVm")
-boxplot(data20$lambdaM_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
-boxplot(data100$lambdaM_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
-boxplot(data500$lambdaM_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
-dev.off()
-
-# Fig. 4ab ####
-pdf(file="Fig4ab_draft.pdf", width=21/2.54, height=9/2.54)
-
+# Fig. 5ab ####
+pdf(file="Fig5ab_draft.pdf", width=21/2.54, height=9/2.54)
 
 cols <- hcl.colors(4,"Spectral",rev=T)
 par(mfrow=c(1,3))
@@ -346,8 +404,8 @@ lines(seq(4,40,4), exp(lmod$coefficients[1])*exp((1:10)*lmod$coefficients[2]), c
 dev.off()
 
 
-# Fig. 4c ####
-pdf(file="Fig4c_draft.pdf", width=21/2.54, height=9/2.54)
+# Fig. 5c ####
+pdf(file="Fig5c_draft.pdf", width=21/2.54, height=9/2.54)
 cols <- hcl.colors(4,"Spectral")
 par(mfrow=c(1,3))
 thr <- ceiling(0.05*length(P_A_OCN))
@@ -378,41 +436,72 @@ text(1e4,0.55,labels = paste0(sprintf('RBN: beta = %.2f',lmod_RBN_1$coefficients
 text(1e4,0.45,labels = paste0(sprintf('BBT: beta = %.2f',lmod_BBT_1$coefficients[2])))
 dev.off()
 
+# Fig. 6 ####
+pdf(file="Fig6_draft.pdf",width=17/2.54, height=24/2.54)
+par(mfrow=c(4,3))
+boxplot(data20$CVm_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.37,0.8)); title("CVm")
+boxplot(data100$CVm_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.37,0.8)); title("CVm")
+boxplot(data500$CVm_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.37,0.8)); title("CVm")
+boxplot(data20$lambdaM_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
+boxplot(data100$lambdaM_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
+boxplot(data500$lambdaM_100[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity")
 
-
-# Fig. S1 ####
-pdf('FigS1_draft.pdf',width=17/2.54,height=10/2.54)
-par(mfrow=c(1,2))
-thrA <- exp(log(10)*seq(0, 4, length.out=100))
-A <- exp(log(10)*seq(4, 7, length.out=100))
-thr_a <- thrA %*% (t(A)^(-1))
-
-N <- 0.435*thrA^(-0.446) %*% t(A)
-p <- 1.531*thrA^(-0.523) %*% t(A^(-0.032))
-p[p>1] <- 1
-
-image.plot(log10(thrA),log10(A),log10(N),
-           xlab='AT',ylab='A',yaxt="n",col=tim.colors(1000),
-           breaks=seq(1,7,length.out=1001))
-axis(side=2,at=4:7)
-contour(log10(thrA),log10(A),log10(thr_a),add=T, levels=-(6:1))
-title('N')
-points(log10(c(20,100,500)),log10(rep(4e4,3)),pch=19)
-
-
-image.plot(log10(thrA),log10(A),p,
-           xlab='AT',ylab='A',yaxt="n",col=tim.colors(1000),
-           breaks=seq(0,1,length.out=1001))
-axis(side=2,at=4:7)
-contour(log10(thrA),log10(A),log10(thr_a),add=T, levels=-(6:1))
-title('p')
-points(log10(c(20,100,500)),log10(rep(4e4,3)),pch=19)
+boxplot(data20$CVm_100_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.4,0.85)); title("CVm H")
+boxplot(data100$CVm_100_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.4,0.85)); title("CVm H")
+boxplot(data500$CVm_100_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T), ylim=c(0.4,0.85)); title("CVm H")
+boxplot(data20$lambdaM_100_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data100$lambdaM_100_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data500$lambdaM_100_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H")
 dev.off()
 
 
+# Table S2 ####
+# scaling for single real rivers
+thr <- 2000
+beta_exp <- numeric(length(riverNames))
 
-# Fig. S2 ####
-pdf(file="FigS2_draft.pdf", width=21/2.54, height=9/2.54)
+for (i in 1:length(riverNames)){
+  fnam <- riverNames[i]
+  eval(parse(text=paste0('load("rivers/',fnam,'.rda")')))
+  eval(parse(text=paste0('river <- ',fnam)))
+  eval(parse(text=paste0('rm(',fnam,')')))
+  dA_river <- river$FD$A[!is.na(river$FD$A)]
+  P_A_river <- numeric(max(dA_river))
+  for (j in 1:length(P_A_river)){
+    P_A_river[j] <- sum(dA_river >= j)/length(dA_river)
+  }
+  lmod_river_1 <- lm(log(P_A_river[11:thr]) ~ log(11:thr)); 
+  lmod_river_1 <- summary(lmod_river_1);
+  beta_exp[i] <- -lmod_river_1$coefficients[2,1]
+}
+
+# Horton for single rivers
+j <- 0; RB <- numeric(length(riverNames))
+RL <- numeric(length(riverNames))
+for (i in 1:length(riverNames)){
+  j <- j+1; tmp <- j
+  while (sO_thrA20$Rivers[j+1]>sO_thrA20$Rivers[j]){
+    j <- j+1
+    tmp <- c(tmp,j)
+    if (j==length(sO_thrA20$Rivers)){
+      break
+    }
+  }
+  N_omega <- N_omega_thrA20$Rivers[tmp]
+  L_omega <- L_omega_thrA20$Rivers[tmp[1:(length(tmp)-1)]]
+  sO <- sO_thrA20$Rivers[tmp]
+  sO_L <- sO_thrA20$Rivers[tmp[1:(length(tmp)-1)]]
+  lmod_RB <- lm(log(N_omega) ~ sO)
+  lmod_RL <- lm(log(L_omega) ~ sO_L)
+  RB[i] <- exp(-lmod_RB$coefficients[2])
+  RL[i] <- exp(lmod_RL$coefficients[2])
+}
+
+df <- data.frame(river=riverNames, RB=RB,RL=RL,beta_exp=beta_exp)
+write.csv(df,file='results/TableS2_draft.csv')
+
+# Fig. S1 ####
+pdf(file="FigS1_draft.pdf", width=21/2.54, height=9/2.54)
 par(mfrow=c(1,3))
 # N_omega
 SS <- c(sO_thrA100$BBT, sO_thrA100$RBN, sO_thrA100$OCN, sO_thrA100$Rivers)
@@ -471,8 +560,8 @@ lines(seq(4,40,4), exp(lmod$coefficients[1])*exp((1:10)*lmod$coefficients[2]), c
 dev.off()
 
 
-# Fig. S3 ####
-pdf(file="FigS3_draft.pdf", width=21/2.54, height=9/2.54)
+# Fig. S2 ####
+pdf(file="FigS2_draft.pdf", width=21/2.54, height=9/2.54)
 par(mfrow=c(1,3))
 # N_omega
 SS <- c(sO_thrA500$BBT, sO_thrA500$RBN, sO_thrA500$OCN, sO_thrA500$Rivers)
@@ -530,48 +619,84 @@ text(5,240,labels=sprintf("Rivers: RL = %.2f + %.2f",mean(RL_thrA500$Rivers),sd(
 lines(seq(4,40,4), exp(lmod$coefficients[1])*exp((1:10)*lmod$coefficients[2]), col=cols[4])
 dev.off()
 
+# Fig. S3 ####
+pdf(file="FigS3_draft.pdf",width=9/2.54, height=8/2.54)
+plot(riversFull$A_cells, df$beta_exp, pch=19, cex=0.5, xlim=c(32000,44000),ylim=c(0.35,0.6),
+     xaxt="n", yaxt="n", bty="n",xlab="A [no. pixels]", ylab="beta")
+axis(1,pos=0.35); axis(2,pos=32000)
+lmod <- lm(df$beta_exp ~ riversFull$A_cells); lmod <- summary(lmod)
+lines(c(32000,44000), lmod$coefficients[1]+lmod$coefficients[2]*c(32000,44000))
+text(42000,0.59,sprintf('p: %.3f',lmod$coefficients[2,4]))
+text(42000,0.57,sprintf('R^2: %.3f',lmod$adj.r.squared))
+dev.off()
+
+
 # Fig. S4 ####
-pdf(file="FigS4_draft.pdf",width=17/2.54, height=12/2.54)
-par(mfrow=c(2,3))
+pdf(file="FigS4_draft.pdf",width=17/2.54, height=24/2.54)
+par(mfrow=c(4,3))
 boxplot(data20$CVm_10[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.07,0.17)); title("CVm")
 boxplot(data100$CVm_10[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.07,0.17)); title("CVm")
 boxplot(data500$CVm_10[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.07,0.17)); title("CVm")
 boxplot(data20$lambdaM_10[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
 boxplot(data100$lambdaM_10[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
 boxplot(data500$lambdaM_10[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
+boxplot(data20$CVm_10_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.11,0.24)); title("CVm H")
+boxplot(data100$CVm_10_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.11,0.24)); title("CVm H")
+boxplot(data500$CVm_10_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.11,0.24)); title("CVm H")
+boxplot(data20$lambdaM_10_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data100$lambdaM_10_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data500$lambdaM_10_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
 dev.off()
 
 # Fig. S5 ####
-pdf(file="FigS5_draft.pdf",width=17/2.54, height=12/2.54)
-par(mfrow=c(2,3))
+pdf(file="FigS5_draft.pdf",width=17/2.54, height=24/2.54)
+par(mfrow=c(4,3))
 boxplot(data20$CVm_20[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.12,0.34)); title("CVm")
 boxplot(data100$CVm_20[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.12,0.34)); title("CVm")
 boxplot(data500$CVm_20[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.12,0.34)); title("CVm")
 boxplot(data20$lambdaM_20[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
 boxplot(data100$lambdaM_20[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
 boxplot(data500$lambdaM_20[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
+boxplot(data20$CVm_20_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.17,0.42)); title("CVm H")
+boxplot(data100$CVm_20_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.17,0.42)); title("CVm H")
+boxplot(data500$CVm_20_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.17,0.42)); title("CVm H")
+boxplot(data20$lambdaM_20_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data100$lambdaM_20_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data500$lambdaM_20_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H")
 dev.off()
 
 # Fig. S6 ####
-pdf(file="FigS6_draft.pdf",width=17/2.54, height=12/2.54)
-par(mfrow=c(2,3))
+pdf(file="FigS6_draft.pdf",width=17/2.54, height=24/2.54)
+par(mfrow=c(4,3))
 boxplot(data20$CVm_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.50,0.89)); title("CVm")
 boxplot(data100$CVm_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.50,0.89)); title("CVm")
 boxplot(data500$CVm_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.50,0.89)); title("CVm")
 boxplot(data20$lambdaM_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral")); title("metapop capacity") 
 boxplot(data100$lambdaM_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
-boxplot(data500$lambdaM_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity") 
+boxplot(data500$lambdaM_200[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity")
+boxplot(data20$CVm_200_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.59,0.91)); title("CVm H")
+boxplot(data100$CVm_200_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.59,0.91)); title("CVm H")
+boxplot(data500$CVm_200_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.59,0.91)); title("CVm H")
+boxplot(data20$lambdaM_200_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data100$lambdaM_200_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data500$lambdaM_200_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H")
 dev.off()
 
 # Fig. S7 ####
-pdf(file="FigS7_draft.pdf",width=17/2.54, height=12/2.54)
-par(mfrow=c(2,3))
+pdf(file="FigS7_draft.pdf",width=17/2.54, height=24/2.54)
+par(mfrow=c(4,3))
 boxplot(data20$CVm_1000[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.85,0.98)); title("CVm")
 boxplot(data100$CVm_1000[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.85,0.98)); title("CVm")
 boxplot(data500$CVm_1000[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.85,0.98)); title("CVm")
 boxplot(data20$lambdaM_1000[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity")
 boxplot(data100$lambdaM_1000[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity")
 boxplot(data500$lambdaM_1000[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity")
+boxplot(data20$CVm_1000_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.88,1)); title("CVm H")
+boxplot(data100$CVm_1000_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.88,1)); title("CVm H")
+boxplot(data500$CVm_1000_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(0.88,1)); title("CVm H")
+boxplot(data20$lambdaM_1000_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data100$lambdaM_1000_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H") 
+boxplot(data500$lambdaM_1000_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("metapop capacity H")
 dev.off()
 
 
@@ -594,11 +719,14 @@ abline(h=1.531*500^(-0.523) * 40000^(-0.032))
 dev.off()
 
 # Fig. S9 ####
-pdf(file="FigS9_draft.pdf",width=17/2.54, height=8/2.54)
-par(mfrow=c(1,3))
+pdf(file="FigS9_draft.pdf",width=17/2.54, height=12/2.54)
+par(mfrow=c(2,3))
 boxplot(data20$mean_dist[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(50,350)); title("mean distance")
 boxplot(data100$mean_dist[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(50,350)); title("mean distance")
 boxplot(data500$mean_dist[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T),ylim=c(50,350)); title("mean distance")
+boxplot(data20$CVm_0_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("CVm 0")
+boxplot(data100$CVm_0_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("CVm 0")
+boxplot(data500$CVm_0_H[,c(4,3,2,1)], notch=T, col=hcl.colors(4,"spectral",rev=T)); title("CVm 0")
 dev.off()
 
 
@@ -610,3 +738,8 @@ par(mfrow=c(1,2))
 hist(Acell[1:50],ylim=c(0,15))
 hist(log10(Akm2[1:50]),breaks=seq(2,5,0.5),ylim=c(0,20))
 dev.off()
+
+
+
+
+

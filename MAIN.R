@@ -10,6 +10,9 @@ library(rgdal)
 library(shapefiles)
 library(spam)
 library(fields)
+library(Matrix)
+library(OCNet)
+
 # follow instructions on https://hydrology.usu.edu/taudem/taudem5/TauDEMRScript.txt to install TauDEM
 
 source("support_functions.R")
@@ -41,7 +44,7 @@ if (!file.exists("results/TableS1_draft.csv")){
   }
   df <- data.frame(name=rivers$Name, A_km2=Akm2, A_cells=Acell, l_m=cellsize, zoom=zoom, country=rivers$country, lat=lat, long=long)
   write.csv(df,file="results/TableS1_draft.csv")
-} 
+}
 
 # Generate OCN ####
 for (i in 1:50){
@@ -67,7 +70,7 @@ for (i in 1:50){
 # Evaluate CVm and lambdaM (+ create RBN & BBT) ####
 thrA_vec <- c(500,100,20) 
 for (thrA in thrA_vec){
-  fname <- paste0('results/data',thrA,'.rda')
+  fname <- paste0('results/data_new',thrA,'.rda')
   if (!file.exists(fname)){
     
     mean_dist <- data.frame(matrix(0,50,4))
@@ -78,13 +81,25 @@ for (thrA in thrA_vec){
     CVm_10 <- lambdaM_10 <-  data.frame(matrix(0,50,4))
     nNodes <- nLinks <- data.frame(matrix(0,50,4))
     
+    CVm_1000_H <- lambdaM_1000_H <- data.frame(matrix(0,50,4))
+    CVm_200_H <- lambdaM_200_H <- data.frame(matrix(0,50,4))
+    CVm_100_H <- lambdaM_100_H <- data.frame(matrix(0,50,4))
+    CVm_20_H <- lambdaM_20_H <- data.frame(matrix(0,50,4))
+    CVm_10_H <- lambdaM_10_H <- CVm_0_H <- data.frame(matrix(0,50,4))
+    
     names(CVm_1000) <- names(lambdaM_1000)  <- c("Rivers","OCN","RBN","BBT")
     names(CVm_200) <- names(lambdaM_200)  <- c("Rivers","OCN","RBN","BBT")
     names(CVm_100) <- names(lambdaM_100)  <- c("Rivers","OCN","RBN","BBT")
     names(CVm_20) <- names(lambdaM_20)  <- c("Rivers","OCN","RBN","BBT")
     names(CVm_10) <- names(lambdaM_10)  <- c("Rivers","OCN","RBN","BBT")
-    names(mean_dist)  <- c("Rivers","OCN","RBN","BBT")
+    names(mean_dist)  <-  c("Rivers","OCN","RBN","BBT")
     names(nNodes) <- names(nLinks) <- c("Rivers","OCN","RBN","BBT")
+    
+    names(CVm_1000_H) <- names(lambdaM_1000_H)  <- c("Rivers","OCN","RBN","BBT")
+    names(CVm_200_H) <- names(lambdaM_200_H)  <- c("Rivers","OCN","RBN","BBT")
+    names(CVm_100_H) <- names(lambdaM_100_H)  <- c("Rivers","OCN","RBN","BBT")
+    names(CVm_20_H) <- names(lambdaM_20_H)  <- c("Rivers","OCN","RBN","BBT")
+    names(CVm_10_H) <- names(lambdaM_10_H)  <- names(CVm_0_H) <- c("Rivers","OCN","RBN","BBT")
     
     for (i in 1:50){
       cat(sprintf("i: %d \n",i))
@@ -140,55 +155,83 @@ for (thrA in thrA_vec){
         cat('   calculate RN distances... \n')
         distances <- river$RN$downstreamLengthUnconnected + t(river$RN$downstreamLengthUnconnected) + 
           as.matrix.spam(river$RN$downstreamPathLength + t(river$RN$downstreamPathLength))
+        
+        patchSize <- river$RN$nUpstream^0.5/sum(river$RN$nUpstream^0.5) 
+        HS_mat <- matrix(patchSize,river$RN$nNodes,1) %*% matrix(patchSize,1,river$RN$nNodes)
         mean_dist[i,j] <- mean(distances)/river$cellsize
+        CVm_0_H[i,j] <- (sum(patchSize^2))^0.5/sum(patchSize)
         
         cat('   alpha=1000... \n')
         expdist <- exp(-distances/river$cellsize/1000)
         diag(expdist) <- numeric(river$RN$nNodes)
+        expdist_HS <- expdist*HS_mat
+        diag(expdist_HS) <- numeric(river$RN$nNodes)
         CVm_1000[i,j] <- ((1+1/river$RN$nNodes*sum(expdist))/river$RN$nNodes)^0.5
         EE <- eigen(expdist, only.values = T)
-        rm(expdist)
-        gc(verbose=F)
         lambdaM_1000[i,j] <- max(EE$values)
+        CVm_1000_H[i,j] <- (sum(patchSize^2) + sum(expdist_HS))^0.5/sum(patchSize)
+        EEH <- eigen(expdist_HS,only.values=T)
+        lambdaM_1000_H[i,j] <- max(EEH$values)
+        rm(expdist,expdist_HS)
+        gc(verbose=F)
         
         cat('   alpha=200... \n')
         expdist <- exp(-distances/river$cellsize/200)
         diag(expdist) <- numeric(river$RN$nNodes)
+        expdist_HS <- expdist*HS_mat
+        diag(expdist_HS) <- numeric(river$RN$nNodes)
         CVm_200[i,j] <- ((1+1/river$RN$nNodes*sum(expdist))/river$RN$nNodes)^0.5
         EE <- eigen(expdist, only.values = T)
-        rm(expdist)
-        gc(verbose=F)
         lambdaM_200[i,j] <- max(EE$values)
+        CVm_200_H[i,j] <- (sum((patchSize)^2) + sum(expdist_HS))^0.5/sum(patchSize)
+        EEH <- eigen(expdist_HS,only.values=T)
+        lambdaM_200_H[i,j] <- max(EEH$values)
+        rm(expdist,expdist_HS)
+        gc(verbose=F)
         
         cat('   alpha=100... \n')
         expdist <- exp(-distances/river$cellsize/100)
         diag(expdist) <- numeric(river$RN$nNodes)
+        expdist_HS <- expdist*HS_mat
+        diag(expdist_HS) <- numeric(river$RN$nNodes)
         CVm_100[i,j] <- ((1+1/river$RN$nNodes*sum(expdist))/river$RN$nNodes)^0.5
         EE <- eigen(expdist, only.values = T)
-        rm(expdist)
-        gc(verbose=F)
         lambdaM_100[i,j] <- max(EE$values)
-        
+        CVm_100_H[i,j] <- (sum((patchSize)^2) + sum(expdist_HS))^0.5/sum(patchSize)
+        EEH <- eigen(expdist_HS,only.values=T)
+        lambdaM_100_H[i,j] <- max(EEH$values)
+        rm(expdist,expdist_HS)
+        gc(verbose=F)
         
         cat('   alpha=20... \n')
         expdist <- exp(-distances/river$cellsize/20)
         diag(expdist) <- numeric(river$RN$nNodes)
+        expdist_HS <- expdist*HS_mat
+        diag(expdist_HS) <- numeric(river$RN$nNodes)
         CVm_20[i,j] <- ((1+1/river$RN$nNodes*sum(expdist))/river$RN$nNodes)^0.5
         EE <- eigen(expdist, only.values = T)
-        rm(expdist)
-        gc(verbose=F)
         lambdaM_20[i,j] <- max(EE$values)
+        CVm_20_H[i,j] <- (sum((patchSize)^2) + sum(expdist_HS))^0.5/sum(patchSize)
+        EEH <- eigen(expdist_HS,only.values=T)
+        lambdaM_20_H[i,j] <- max(EEH$values)
+        rm(expdist,expdist_HS)
+        gc(verbose=F)
         
         cat('   alpha=10... \n')
         expdist <- exp(-distances/river$cellsize/10)
         diag(expdist) <- numeric(river$RN$nNodes)
+        expdist_HS <- expdist*HS_mat
+        diag(expdist_HS) <- numeric(river$RN$nNodes)
         CVm_10[i,j] <- ((1+1/river$RN$nNodes*sum(expdist))/river$RN$nNodes)^0.5
         EE <- eigen(expdist, only.values = T)
-        rm(expdist)
-        gc(verbose=F)
         lambdaM_10[i,j] <- max(EE$values)
+        CVm_10_H[i,j] <- (sum((patchSize)^2) + sum(expdist_HS))^0.5/sum(patchSize)
+        EEH <- eigen(expdist_HS,only.values=T)
+        lambdaM_10_H[i,j] <- max(EEH$values)
+        rm(expdist,expdist_HS)
+        gc(verbose=F)
         
-        rm(distances)
+        rm(distances,HS_mat)
         gc(verbose=F)
         
         nNodes[i,j] <- river$RN$nNodes
@@ -201,9 +244,15 @@ for (thrA in thrA_vec){
                      CVm_100=CVm_100, lambdaM_100=lambdaM_100,
                      CVm_20=CVm_20, lambdaM_20=lambdaM_20,
                      CVm_10=CVm_10, lambdaM_10=lambdaM_10,
-                     mean_dist=mean_dist,  nNodes=nNodes,  nLinks=nLinks)
+                     CVm_1000_H=CVm_1000_H, lambdaM_1000_H=lambdaM_1000_H,
+                     CVm_200_H=CVm_200_H, lambdaM_200_H=lambdaM_200_H,
+                     CVm_100_H=CVm_100_H, lambdaM_100_H=lambdaM_100_H,
+                     CVm_20_H=CVm_20_H, lambdaM_20_H=lambdaM_20_H,
+                     CVm_10_H=CVm_10_H, lambdaM_10_H=lambdaM_10_H,
+                     CVm_0_H=CVm_0_H, mean_dist=mean_dist,  
+                     nNodes=nNodes,  nLinks=nLinks)
         eval(parse(text=paste0('data',thrA, '<- data')))
-        eval(parse(text=paste0('save(data',thrA, ', file="results/data',thrA,'.rda")')))
+        eval(parse(text=paste0('save(data',thrA, ', file="results/data_new',thrA,'.rda")')))
       }
     }
   }
@@ -436,3 +485,6 @@ if (!file.exists("results/scaling.rda")){
   save(scaling,file="results/scaling.rda")
   
 } 
+
+
+
